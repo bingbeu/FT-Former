@@ -19,5 +19,5 @@ pip install -v --disable-pip-version-check --no-cache-dir --global-option="--cpp
 pip install opencv-python==4.5.1.48 yacs==0.1.8
 ```
 #### data preparation
-Download [iNaturalist 18](https://github.com/visipedia/inat_comp),[CUB](http://www.vision.caltech.edu/visipedia/CUB-200-2011.html),[NABirds](https://dl.allaboutbirds.org/nabirds).
+Download [iNaturalist 18](https://github.com/visipedia/inat_comp),[CUB-200-2011](http://www.vision.caltech.edu/visipedia/CUB-200-2011.html),[NABirds](https://dl.allaboutbirds.org/nabirds).
 
