@@ -1,6 +1,5 @@
 # FT-Former: Frequency-Aware Token-Filtered Transformer for Fine-Grained Species Recognition
 ![Overview](figs/overview.png)
-![Token Optimizer Engine](figs/Token_Optimizer_Engine.png)
 ## Training
 
 
@@ -48,7 +47,7 @@ datasets
 You can dowmload pre-trained model from model zoo, and put them under \<root\>/pretrained.
 To train MetaFG on datasets, run:
 ```
-python3 -m torch.distributed.launch --nproc_per_node <num-of-gpus-to-use> --master_port 12345  main.py --cfg /configs/FT_Former_NABirds.yaml --dataset NABirds --pretrain /raid/test/MetaFormer/pretrained_model/metafg_2_inat21_384.pth --batch-size 16 --output <output-directory> --tag <job-tag>
+python3 -m torch.distributed.launch --nproc_per_node <num-of-gpus-to-use> --master_port 12345  main.py --cfg /configs/FT_Former_NABirds.yaml --dataset NABirds --pretrain /pretrained_model/metafg_2_inat21_384.pth --batch-size 16 --output <output-directory> --tag <job-tag>
 ```
 \<dataset-name\>:inaturelist2018cub-200,nabirds
 For NABirds, run:
