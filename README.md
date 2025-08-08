@@ -52,13 +52,13 @@ datasets
   |       └——————cars_annos.mat
 
 ```
-#### Training
+## Training
 You can dowmload pre-trained model from model zoo, and put them under \<root\>/pretrained.
 To train MetaFG on datasets, run:
 ```
 python3 -m torch.distributed.launch --nproc_per_node <num-of-gpus-to-use> --master_port 12345  main.py --cfg /configs/FT_Former_NABirds.yaml --dataset NABirds --pretrain /raid/test/MetaFormer/pretrained_model/metafg_2_inat21_384.pth --batch-size 16 --output <output-directory> --tag <job-tag>
 ```
-\<dataset-name\>:inaturelist2021,inaturelist2018,inaturelist2017,cub-200,nabirds,stanfordcars,aircraft
+\<dataset-name\>:inaturelist2018cub-200,nabirds,stanfordcars
 For NABirds, run:
 ```
 CUDA_VISIBLE_DEVICES=0,1 python3 -m torch.distributed.launch --nproc_per_node 2 --master_port 12345  main.py --cfg /configs/FT_Former_NABirds.yaml --batch-size 16 --tag NABirds --lr 5e-5 --min-lr 5e-7 --warmup-lr 5e-8 --epochs 300 --warmup-epochs 20 --dataset NABirds --pretrain /raid/test/MetaFormer/pretrained_model/metafg_2_inat21_384.pth --accumulation-steps 2 --opts DATA.IMG_SIZE 384
