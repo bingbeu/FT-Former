@@ -1,4 +1,4 @@
-# bingbeu-FT-Former
+# FT-Former: Frequency-Aware Token-Filtered Transformer for Fine-Grained Species Recognition
 
 * install `Pytorch and torchvision`
 ```
