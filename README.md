@@ -23,7 +23,7 @@ pip install -v --disable-pip-version-check --no-cache-dir --global-option="--cpp
 ```
 pip install opencv-python==4.5.1.48 yacs==0.1.8
 ```
-#### data preparation
+## data preparation
 Download [iNaturalist 18](https://github.com/visipedia/inat_comp),[CUB-200-2011](http://www.vision.caltech.edu/visipedia/CUB-200-2011.html),[NABirds](https://dl.allaboutbirds.org/nabirds).
 
 ## Trained Model Checkpoints
@@ -61,9 +61,9 @@ python3 -m torch.distributed.launch --nproc_per_node <num-of-gpus-to-use> --mast
 For NABirds, run:
 ```
 CUDA_VISIBLE_DEVICES=0,1 python3 -m torch.distributed.launch --nproc_per_node 2 --master_port 12345  main.py --cfg /configs/FT_Former_NABirds.yaml --batch-size 16 --tag NABirds --lr 5e-5 --min-lr 5e-7 --warmup-lr 5e-8 --epochs 300 --warmup-epochs 20 --dataset NABirds --pretrain /raid/test/MetaFormer/pretrained_model/metafg_2_inat21_384.pth --accumulation-steps 2 --opts DATA.IMG_SIZE 384
+```
 
-
-#### Acknowledgment
+## Acknowledgment
 
 We would like to thank the authors of [MetaFormer](https://github.com/dqshuai/MetaFormer) and [SVT](https://github.com/badripatro/svt) for their publicly available code. Part of this work is built upon their implementations.
 
