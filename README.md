@@ -52,7 +52,6 @@ datasets
   |       └——————cars_annos.mat
 
 ```
-## Training
 You can dowmload pre-trained model from model zoo, and put them under \<root\>/pretrained.
 To train MetaFG on datasets, run:
 ```
