@@ -32,14 +32,10 @@ We provide the trained model checkpoints on the following datasets. You can down
 
 - **FT-Former trained on Datasets**  
   🔗 [Baidu Pan Link](https://pan.baidu.com/s/1CAa0VdSE8BY4n_SYeFvYLg?pwd=i2a6)  
-  🔐 Password: `i2a6`  
-
+  🔐 Password: `i2a6`
+  
+```
 datasets
-  |————inraturelist2021
-  |       └——————train
-  |       └——————val
-  |       └——————train.json
-  |       └——————val.json
   |————inraturelist2018
   |       └——————train_val_images
   |       └——————train2018.json
@@ -47,12 +43,6 @@ datasets
   |       └——————train2018_locations.json
   |       └——————val2018_locations.json
   |       └——————categories.json.json
-  |————inraturelist2017
-  |       └——————train_val_images
-  |       └——————train2017.json
-  |       └——————val2017.json
-  |       └——————train2017_locations.json
-  |       └——————val2017_locations.json
   |————cub-200
   |       └——————...
   |————nabirds
@@ -60,8 +50,7 @@ datasets
   |————stanfordcars
   |       └——————car_ims
   |       └——————cars_annos.mat
-  |————aircraft
-  |       └——————...
+
 ```
 #### Training
 You can dowmload pre-trained model from model zoo, and put them under \<root\>/pretrained.
