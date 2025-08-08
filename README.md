@@ -30,10 +30,6 @@ Download [iNaturalist 18](https://github.com/visipedia/inat_comp),[CUB-200-2011]
 
 We provide the trained model checkpoints on the following datasets. You can download and evaluate them directly.
 
-- **FT-Former trained on Datasets**  
-  🔗 [Baidu Pan Link](https://pan.baidu.com/s/1CAa0VdSE8BY4n_SYeFvYLg?pwd=i2a6)  
-  🔐 Password: `i2a6`
-  
 ```
 datasets
   |————inraturelist2018
@@ -61,6 +57,10 @@ python3 -m torch.distributed.launch --nproc_per_node <num-of-gpus-to-use> --mast
 For NABirds, run:
 ```
 CUDA_VISIBLE_DEVICES=0,1 python3 -m torch.distributed.launch --nproc_per_node 2 --master_port 12345  main.py --cfg /configs/FT_Former_NABirds.yaml --batch-size 16 --tag NABirds --lr 5e-5 --min-lr 5e-7 --warmup-lr 5e-8 --epochs 300 --warmup-epochs 20 --dataset NABirds --pretrain /raid/test/MetaFormer/pretrained_model/metafg_2_inat21_384.pth --accumulation-steps 2 --opts DATA.IMG_SIZE 384
+```
+- **FT-Former trained on Datasets**  
+  🔗 [Baidu Pan Link](https://pan.baidu.com/s/1CAa0VdSE8BY4n_SYeFvYLg?pwd=i2a6)  
+  🔐 Password: `i2a6`
 ```
 
 ## Acknowledgment
