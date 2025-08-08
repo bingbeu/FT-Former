@@ -34,6 +34,46 @@ We provide the trained model checkpoints on the following datasets. You can down
   🔗 [Baidu Pan Link](https://pan.baidu.com/s/1CAa0VdSE8BY4n_SYeFvYLg?pwd=i2a6)  
   🔐 Password: `i2a6`  
 
+datasets
+  |————inraturelist2021
+  |       └——————train
+  |       └——————val
+  |       └——————train.json
+  |       └——————val.json
+  |————inraturelist2018
+  |       └——————train_val_images
+  |       └——————train2018.json
+  |       └——————val2018.json
+  |       └——————train2018_locations.json
+  |       └——————val2018_locations.json
+  |       └——————categories.json.json
+  |————inraturelist2017
+  |       └——————train_val_images
+  |       └——————train2017.json
+  |       └——————val2017.json
+  |       └——————train2017_locations.json
+  |       └——————val2017_locations.json
+  |————cub-200
+  |       └——————...
+  |————nabirds
+  |       └——————...
+  |————stanfordcars
+  |       └——————car_ims
+  |       └——————cars_annos.mat
+  |————aircraft
+  |       └——————...
+```
+#### Training
+You can dowmload pre-trained model from model zoo, and put them under \<root\>/pretrained.
+To train MetaFG on datasets, run:
+```
+python3 -m torch.distributed.launch --nproc_per_node <num-of-gpus-to-use> --master_port 12345  main.py --cfg /raid/auto/MetaFormer/configs/MetaFG_meta_bert_1_224.yaml --dataset cub-200 --pretrain /raid/test/MetaFormer/pretrained_model/metafg_2_inat21_384.pth --batch-size 16 --output <output-directory> --tag <job-tag>
+```
+\<dataset-name\>:inaturelist2021,inaturelist2018,inaturelist2017,cub-200,nabirds,stanfordcars,aircraft
+For CUB-200-2011, run:
+```
+CUDA_VISIBLE_DEVICES=0,1 python3 -m torch.distributed.launch --nproc_per_node 2 --master_port 12345  main.py --cfg /raid/auto/MetaFormer/configs/MetaFG_meta_bert_1_224.yaml --batch-size 16 --tag cub-200_v1 --lr 5e-5 --min-lr 5e-7 --warmup-lr 5e-8 --epochs 300 --warmup-epochs 20 --dataset cub-200 --pretrain /raid/test/MetaFormer/pretrained_model/metafg_2_inat21_384.pth --accumulation-steps 2 --opts DATA.IMG_SIZE 384
+
 
 ## Acknowledgment
 
