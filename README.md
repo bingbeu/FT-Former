@@ -43,9 +43,6 @@ datasets
   |       └——————...
   |————nabirds
   |       └——————...
-  |————stanfordcars
-  |       └——————car_ims
-  |       └——————cars_annos.mat
 
 ```
 You can dowmload pre-trained model from model zoo, and put them under \<root\>/pretrained.
