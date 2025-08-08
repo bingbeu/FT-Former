@@ -1,5 +1,5 @@
 # FT-Former: Frequency-Aware Token-Filtered Transformer for Fine-Grained Species Recognition
-
+![Overview](figs/overview.png)
 * install `Pytorch and torchvision`
 ```
 pip install torch==1.13.1 torchvision==0.14.1
