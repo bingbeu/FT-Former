@@ -1,6 +1,6 @@
 # FT-Former: Frequency-Aware Token-Filtered Transformer for Fine-Grained Species Recognition
 ![Overview](figs/overview.png)
-
+![Token Optimizer Engine](figs/Token Optimizer Engine.png)
 ## Training
 
 
