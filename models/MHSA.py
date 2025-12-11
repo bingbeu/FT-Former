@@ -68,12 +68,104 @@ class Relative_Attention(nn.Module):
         self.proj_drop = nn.Dropout(proj_drop)
         trunc_normal_(self.relative_position_bias_table, std=.02)
         self.softmax = nn.Softmax(dim=-1)
+        self.token_weights = nn.Parameter(torch.tensor([0.5, 0.5], dtype=torch.float32))  
+        self.token_weights = nn.Parameter(F.softmax(self.token_weights, dim=0))
+        self.first_y = None #切记每一步骤不用的注释
+    
+    def token_attention_selection(self, x, attn, y):
+        if self.first_y is None:
+            self.first_y = y
+        extra_token_num = self.extra_token_num
+        B, N, C = x.shape
+        extra_token_attn = attn[:, :, :extra_token_num, extra_token_num:]
+        
+        # 平均所有头的注意力分数
+        avg_extra_attn = extra_token_attn.mean(dim=1)  # [B, extra_token_num, N-extra_token_num]
+        cls_attn = attn[:, :, 0, self.extra_token_num:]  # [B, H, N-1]
+        cls_attn = cls_attn.mean(dim=1)  # [B, N-1]
+
+        # 计算每个样本的平均值和最大值（保持维度以便广播）
+        sample_avg = cls_attn.mean(dim=1, keepdim=True)  # [B, 1]
+        sample_max = cls_attn.max(dim=1, keepdim=True).values  # [B, 1]
+
+        # 创建区间判断掩码并统计数量
+        mask = (cls_attn >= sample_avg) & (cls_attn <= sample_max)
+        counts = mask.sum(dim=1)
+        counts_list = counts.tolist()
+        max_value = max(counts_list)
+        n = N - self.extra_token_num 
+        #print("The maximum value in the list is:", max_value)
+        λ = 0.6
+        def adjusted_count(x, N, T, s):
+            sigmoid = 1 / (1 + math.exp(-(x - T) / s))
+            return round(N * (λ + (1 - λ) * sigmoid))
+        #print(f"counts:{counts_list}")
+        T = sum(counts_list) / len(counts_list)
+        
+        keep_tokens = adjusted_count(max_value, n, T, B)
+        # Adjust a raw count, e.g., 166:
+        #print(f'keep_tokens:{keep_tokens}')
+        all_selected_image_indices = []
+        
+        # 遍历每个额外Token
+        for extra_idx in range(extra_token_num):
+            current_extra_attn = avg_extra_attn[:, extra_idx, :]
+            _, top_image_indices = torch.topk(current_extra_attn, keep_tokens, largest=True, sorted=False)
+            
+            all_selected_image_indices.extend(top_image_indices.view(-1).cpu().numpy().tolist())
+        
+        # 去重并截取指定数量的Token
+        all_selected_image_indices = list(set(all_selected_image_indices))
+        all_selected_image_indices = all_selected_image_indices[:keep_tokens]
+        
+        # 将all_selected_image_indices转换为张量，并确保它的形状为 [B, N]，即 [batch_size, keep_tokens]
+        all_selected_image_indices = torch.tensor(all_selected_image_indices, device=x.device).unsqueeze(0).expand(B, -1)
+        
+        #
+        x_selected = torch.gather(x[:, extra_token_num:], 1, all_selected_image_indices.unsqueeze(-1).expand(-1, -1, C))  # 从图片部分选择Token
+        
+        # 
+        x = torch.cat([x[:, :extra_token_num], x_selected], dim=1)  # 拼接extra_token和x_selected
+        
+        # 计算当前选择的Token数量
+        selected_tokens = x.shape[1]
+        
+        # 计算剩余需要补充的Token数量
+        remaining_tokens = N - selected_tokens
+        
+        if remaining_tokens > 0:
+            non_extra_tokens = y[:, 1:, :]  
+            weights = F.softmax(self.token_weights, dim=0)  # 归一化权重
+            
+            # 计算每个Token类型应该补充的Token数量
+            num_text_tokens = int(weights[0] * remaining_tokens)  # 文本Token的数量
+            #num_freq_tokens = int(weights[1] * remaining_tokens)  # 频率Token的数量
+            num_image_tokens = remaining_tokens - num_text_tokens  # 图片Token的数量
+            
+            text_tokens = non_extra_tokens[:, :extra_token_num, :]  # 假设文本Token在y的前self.token_type_dim位置
+            #freq_tokens = non_extra_tokens[:, extra_token_num-20:extra_token_num, :]  # 假设频率Token在y的后续位置
+            image_tokens = non_extra_tokens[:, extra_token_num:, :]  # 图片Token在剩余的位置
+            
+            text_indices = torch.randint(0, text_tokens.shape[1], (B, num_text_tokens), device=x.device)
+            #freq_indices = torch.randint(0, freq_tokens.shape[1], (B, num_freq_tokens), device=x.device)
+            image_indices = torch.randint(0, image_tokens.shape[1], (B, num_image_tokens), device=x.device)
+            
+            # 获取补充的tokens
+            selected_text_tokens = torch.gather(text_tokens, 1, text_indices.unsqueeze(-1).expand(-1, -1, C))
+            #selected_freq_tokens = torch.gather(freq_tokens, 1, freq_indices.unsqueeze(-1).expand(-1, -1, C))
+            selected_image_tokens = torch.gather(image_tokens, 1, image_indices.unsqueeze(-1).expand(-1, -1, C))
+            
+           
+            x = torch.cat([x, selected_text_tokens, selected_image_tokens], dim=1)
+
+        return x
     def forward(self, x,):
         """
         Args:
             x: input features with shape of (B, N, C)
         """
         B_, N, C = x.shape
+        y = x
         qkv = self.qkv(x).reshape(B_, N, 3, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4)
         q, k, v = qkv[0], qkv[1], qkv[2]  # make torchscript happy (cannot use tensor as tuple)
 
@@ -93,6 +185,7 @@ class Relative_Attention(nn.Module):
         x = (attn @ v).transpose(1, 2).reshape(B_, N, C)
         x = self.proj(x)
         x = self.proj_drop(x)
+        x = self.token_attention_selection(x, attn, y)
         return x
 class OverlapPatchEmbed(nn.Module):
     """ Image to Patch Embedding
@@ -153,81 +246,46 @@ class MHSABlock(nn.Module):
         self.drop_path = DropPath(drop_path) if drop_path > 0. else nn.Identity()
         self.norm2 = norm_layer(output_dim)
         mlp_hidden_dim = int(output_dim * mlp_ratio)
-        self.FrequencyTransformerPreprocessor = FrequencyTransformerPreprocessor(input_dim=512, target_seq_len=16, target_channels=768)
+        #self.FrequencyTransformerPreprocessor = FrequencyTransformerPreprocessor(input_dim=512, target_seq_len=20, target_channels=768)
         self.mlp = Mlp(in_features=output_dim, hidden_features=mlp_hidden_dim, act_layer=act_layer, drop=drop)
-        for ind,meta_dim in enumerate(meta_dims):
-                freq_head_1 = nn.Sequential(
-                                        nn.Linear(meta_dim, attn_embed_dims[0]),
-                                        nn.Softplus(),
-                                        nn.LayerNorm(attn_embed_dims[0]),
-                                        ResNormLayer(attn_embed_dims[0])
-                                        ) if meta_dim > 0 else nn.Identity()
+        # for ind,meta_dim in enumerate(meta_dims):
+        #         freq_head_1 = nn.Sequential(
+        #                                 nn.Linear(meta_dim, attn_embed_dims[0]),
+        #                                 nn.Softplus(),
+        #                                 nn.LayerNorm(attn_embed_dims[0]),
+        #                                 ResNormLayer(attn_embed_dims[0])
+        #                                 ) if meta_dim > 0 else nn.Identity()
 
-                freq_head_2 = nn.Sequential(
-                                        nn.Linear(768, attn_embed_dims[1]),
-                                        nn.Softplus(),
-                                        nn.LayerNorm(attn_embed_dims[1]),
-                                        ResNormLayer(attn_embed_dims[1])
-                                        ) if meta_dim > 0 else nn.Identity()
+        #         freq_head_2 = nn.Sequential(
+        #                                 nn.Linear(768, attn_embed_dims[1]),
+        #                                 nn.Softplus(),
+        #                                 nn.LayerNorm(attn_embed_dims[1]),
+        #                                 ResNormLayer(attn_embed_dims[1])
+        #                                 ) if meta_dim > 0 else nn.Identity()
 
-                setattr(self, f"freq_{ind+1}_head_1", freq_head_1)
-                setattr(self, f"freq_{ind+1}_head_2", freq_head_2)
+        #         setattr(self, f"freq_{ind+1}_head_1", freq_head_1)
+        #         setattr(self, f"freq_{ind+1}_head_2", freq_head_2)
 
-    def forward(self, x, H, W, extra_tokens=None, frequency=None, extra_tokens_type=None, is_stage_3=False):
+    def forward(self, x, H, W, extra_tokens=None, is_stage_3=False):
     # 每次都需要执行 patch_embed 处理
         if self.patch_embed is not None:
             x, _, _ = self.patch_embed(x)
             #print(f"主每次都需要执行函数u{x.shape}")
             B, N, C = x.shape
-            '''
-            # 用于存储 freq_1 和 freq_2
-            stored_freqs = [None, None]  # 用列表存储 freq_1 和 freq_2
+        # if is_stage_3:
+        #     B, N, C = x.shape 
+        #     H = W = int(math.sqrt(N))  # 确保 H 和 W 的尺寸一致
+        #     y = x.view(B, C, H, W)
+        #     y = self.FrequencyTransformerPreprocessor(y)
+        #     freq_head_1 = getattr(self, "freq_1_head_1")
+        #     freq_head_2 = getattr(self, "freq_1_head_2")
 
-            # 只有在 is_stage_3 为 True 时，才进行 freq_1 和 freq_2 的生成
-            if is_stage_3:
-                H = W = int(math.sqrt(N))  # 确保 H 和 W 的尺寸一致
-                y = x.view(B, C, H, W)  # reshape
-                y = self.FrequencyTransformerPreprocessor(y)  # 预处理
-                print(f"y.shape: {y.shape}")
-
-                assert frequency is not None, 'meta is None'
-                if len(self.meta_dims) > 1:
-                    metas = torch.split(frequency, self.meta_dims, dim=1)
-                else:
-                    metas = (frequency,)
-
-                B, N, C = y.shape  # 确认 y 的形状
-
-                # 将 y 投影到不同的目标嵌入维度
-                freq_head_1 = getattr(self, "freq_1_head_1")
-                freq_head_2 = getattr(self, "freq_1_head_2")
-
-                freq_1 = freq_head_1(y)
-                freq_1 = freq_1.reshape(B, -1, self.attn_embed_dims[0])
-                freq_2 = freq_head_2(y)
-                freq_2 = freq_2.reshape(B, -1, self.attn_embed_dims[1])
-
-                # 存储到 stored_freqs 列表中
-                stored_freqs[0] = freq_1  # 存储 freq_1
-                stored_freqs[1] = freq_2  # 存储 freq_2
-
-                print(f"stored_freqs: {stored_freqs}")
-
-            # 根据 extra_tokens_type 判断是否添加 freq_1 或 freq_2
-            if extra_tokens_type == "extra_tokens_1":
-                if stored_freqs[0] is not None:
-                    extra_tokens.append(stored_freqs[0])
-                    print(f"extra_tokens (added freq_1): {extra_tokens}")
-                else:
-                    raise ValueError("extra_tokens_type == 'extra_tokens_1' but freq_1 is None.")
-
-            elif extra_tokens_type == "extra_tokens_2":
-                if stored_freqs[1] is not None:
-                    extra_tokens.append(stored_freqs[1])
-                    print(f"extra_tokens (added freq_2): {extra_tokens}")
-                else:
-                    raise ValueError("extra_tokens_type == 'extra_tokens_2' but freq_2 is None.")
-                '''
+        #     freq_1 = freq_head_1(y)
+        #     freq_1 = freq_1.reshape(B, -1, self.attn_embed_dims[0])
+            
+        #     freq_2 = freq_head_2(y)
+        #     freq_2 = freq_2.reshape(B, -1, self.attn_embed_dims[1])
+        #     extra_tokens.append(freq_1 )   
         # 只有当 extra_tokens 存在时，才进行扩展和拼接
         if extra_tokens is not None:
             extra_tokens = [token.expand(x.shape[0], -1, -1) for token in extra_tokens]
@@ -237,4 +295,6 @@ class MHSABlock(nn.Module):
         # 继续进行后续的操作
         x = x + self.drop_path(self.attn(self.norm1(x)))
         x = x + self.drop_path(self.mlp(self.norm2(x), H // 2, W // 2))
+        # if is_stage_3 and freq_2 is not None:
+        #     return x ,freq_2 
         return x
