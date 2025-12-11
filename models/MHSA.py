@@ -95,7 +95,7 @@ class Relative_Attention(nn.Module):
         max_value = max(counts_list)
         n = N - self.extra_token_num 
         #print("The maximum value in the list is:", max_value)
-        λ = 0.6
+        λ = 0.9
         def adjusted_count(x, N, T, s):
             sigmoid = 1 / (1 + math.exp(-(x - T) / s))
             return round(N * (λ + (1 - λ) * sigmoid))
@@ -155,10 +155,9 @@ class Relative_Attention(nn.Module):
             #selected_freq_tokens = torch.gather(freq_tokens, 1, freq_indices.unsqueeze(-1).expand(-1, -1, C))
             selected_image_tokens = torch.gather(image_tokens, 1, image_indices.unsqueeze(-1).expand(-1, -1, C))
             
-           
             x = torch.cat([x, selected_text_tokens, selected_image_tokens], dim=1)
-
         return x
+        
     def forward(self, x,):
         """
         Args:
